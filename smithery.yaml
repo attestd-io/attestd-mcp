@@ -1,0 +1,19 @@
+# Smithery: https://smithery.ai/docs
+name: "@attestd/mcp"
+description: "CVE vulnerability and supply chain integrity checks for Claude Code and MCP clients (Attestd API)"
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      ATTESTD_API_KEY:
+        type: string
+        description: "Your Attestd API key (atst_...)"
+    required:
+      - ATTESTD_API_KEY
+  commandFunction: |-
+    (config) => ({
+      command: "npx",
+      args: ["-y", "@attestd/mcp"],
+      env: { ATTESTD_API_KEY: config.ATTESTD_API_KEY }
+    })

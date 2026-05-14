@@ -1,0 +1,54 @@
+{
+  "name": "@attestd/mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing Attestd CVE and supply-chain checks for Claude Code and other MCP clients",
+  "license": "MIT",
+  "author": "Attestd <support@attestd.io>",
+  "homepage": "https://attestd.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/attestd-io/attestd-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/attestd-io/attestd-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "attestd",
+    "cve",
+    "vulnerability",
+    "supply-chain",
+    "claude",
+    "claude-code",
+    "security"
+  ],
+  "type": "module",
+  "bin": {
+    "attestd-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "smithery.yaml"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "generate-products": "node scripts/gen-products.mjs",
+    "prebuild": "node scripts/gen-products.mjs",
+    "build": "tsup",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@attestd/sdk": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
