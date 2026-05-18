@@ -1,5 +1,4 @@
 import {
-  AttestdAPIError,
   AttestdAuthError,
   AttestdRateLimitError,
   AttestdUnsupportedProductError,
@@ -14,7 +13,7 @@ import {
 
 import { COVERED_PRODUCTS, COVERED_PRODUCT_COUNT } from "./products.js";
 
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.1.1";
 
 const CHECK_DESCRIPTION =
   "Check whether a software package version has known CVE vulnerabilities or supply chain compromise. " +
@@ -164,16 +163,7 @@ async function main(): Promise<void> {
           ],
         };
       } catch (err) {
-        // The API returns HTTP 200 {"supported": false} for unsupported products.
-        // The SDK throws AttestdUnsupportedProductError only on 404 (kept for
-        // future-proofing), but the real path is an AttestdAPIError with
-        // "missing 'risk_state'" from the response parser.
-        const isUnsupported =
-          err instanceof AttestdUnsupportedProductError ||
-          (err instanceof AttestdAPIError &&
-            err.message.includes("missing 'risk_state'"));
-
-        if (isUnsupported) {
+        if (err instanceof AttestdUnsupportedProductError) {
           return {
             content: [
               {
@@ -227,7 +217,17 @@ async function main(): Promise<void> {
             ],
           };
         }
-        throw err;
+        const message =
+          err instanceof Error ? err.message : "An unexpected error occurred.";
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ error: message }, null, 2),
+            },
+          ],
+        };
       }
     }
 
