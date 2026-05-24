@@ -36,6 +36,11 @@ export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> 
   { slug: "kube_apiserver", display: "Kubernetes API Server" },
   { slug: "kubelet", display: "Kubernetes kubelet" },
   { slug: "runc", display: "runc" },
+  { slug: "envoy", display: "Envoy Proxy" },
+  { slug: "istio", display: "Istio" },
+  { slug: "cilium", display: "Cilium" },
+  { slug: "calico", display: "Calico" },
+  { slug: "consul", display: "HashiCorp Consul" },
   { slug: "tomcat", display: "Apache Tomcat" },
   { slug: "jetty", display: "Jetty" },
   { slug: "log4j", display: "Apache Log4j" },
@@ -66,4 +71,4 @@ export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> 
   { slug: "perl", display: "Perl" },
   { slug: "erlang", display: "Erlang/OTP" },
 ];
-export const COVERED_PRODUCT_COUNT = 62 as const;
+export const COVERED_PRODUCT_COUNT = 67 as const;
