@@ -8,12 +8,17 @@ startCommand:
     properties:
       ATTESTD_API_KEY:
         type: string
-        description: "Your Attestd API key (atst_...)"
-    required:
-      - ATTESTD_API_KEY
+        description: "Attestd API key (atst_...) — required for check_package_vulnerability only"
+      ATTESTD_BASE_URL:
+        type: string
+        description: "Optional API base URL override (default https://api.attestd.io)"
+    required: []
   commandFunction: |-
     (config) => ({
       command: "npx",
       args: ["-y", "@attestd/mcp"],
-      env: { ATTESTD_API_KEY: config.ATTESTD_API_KEY }
+      env: {
+        ATTESTD_API_KEY: config.ATTESTD_API_KEY || "",
+        ATTESTD_BASE_URL: config.ATTESTD_BASE_URL || ""
+      }
     })

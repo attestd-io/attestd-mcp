@@ -13,7 +13,7 @@ import {
 
 import { COVERED_PRODUCTS, COVERED_PRODUCT_COUNT } from "./products.js";
 
-const SERVER_VERSION = "0.1.1";
+const SERVER_VERSION = "0.1.2";
 
 const CHECK_DESCRIPTION =
   "Check whether a software package version has known CVE vulnerabilities or supply chain compromise. " +

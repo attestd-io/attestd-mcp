@@ -25,6 +25,14 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verify product catalog count
+        run: |
+          node -e "const fs=require('fs'); const s=fs.readFileSync('src/products.ts','utf8'); const m=s.match(/COVERED_PRODUCT_COUNT = (\d+)/); if(!m||Number(m[1])<74) { console.error('Expected COVERED_PRODUCT_COUNT >= 74, got', m&&m[1]); process.exit(1); }"
+
+      - name: Smoke test stdio tools/list
+        run: |
+          echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | node dist/index.js | grep -q check_package_vulnerability
+
       - name: Publish
         run: npm publish --access public
         env:

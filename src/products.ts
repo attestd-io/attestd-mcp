@@ -46,6 +46,7 @@ export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> 
   { slug: "logstash", display: "Logstash" },
   { slug: "zabbix", display: "Zabbix" },
   { slug: "fluentd", display: "Fluentd" },
+  { slug: "apache_axis", display: "Apache Axis" },
   { slug: "tomcat", display: "Apache Tomcat" },
   { slug: "jetty", display: "Jetty" },
   { slug: "log4j", display: "Apache Log4j" },
@@ -75,5 +76,6 @@ export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> 
   { slug: "rust", display: "Rust" },
   { slug: "perl", display: "Perl" },
   { slug: "erlang", display: "Erlang/OTP" },
+  { slug: "litellm", display: "LiteLLM" },
 ];
-export const COVERED_PRODUCT_COUNT = 72 as const;
+export const COVERED_PRODUCT_COUNT = 74 as const;
