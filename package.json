@@ -38,7 +38,8 @@
   },
   "scripts": {
     "generate-products": "node scripts/gen-products.mjs",
-    "prebuild": "node scripts/gen-products.mjs",
+    "generate-tools": "node scripts/gen-tools.mjs",
+    "prebuild": "node scripts/gen-products.mjs && node scripts/gen-tools.mjs",
     "build": "tsup",
     "prepack": "npm run build"
   },
