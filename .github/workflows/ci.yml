@@ -21,3 +21,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Verify check tool exports CVE fields (AMCP-H1)
+        run: node --input-type=module -e "import fs from 'node:fs'; const t=fs.readFileSync('src/tools.ts','utf8'); for (const f of ['cveIds','typosquat','remoteExploitable']) { if (!t.includes(f)) { console.error('missing', f); process.exit(1); } }"
