@@ -23,8 +23,9 @@ const CHECK_DESCRIPTION =
   "PyPI/npm packages for supply chain integrity.";
 
 const LIST_DESCRIPTION =
-  "Returns all product slugs and human-readable names covered by Attestd for CVE risk checks. " +
-  "Call this first if you are unsure whether a product slug is supported. " +
+  "Returns infrastructure product slugs covered by Attestd for CVE checks. " +
+  "PyPI and npm packages also work with check_package_vulnerability even when absent from this list. " +
+  "Call this first if you are unsure whether an infrastructure slug is supported. " +
   "Uses a static bundled list. No /v1/check API call for this tool.";
 
 const CHECK_OUTPUT_SCHEMA = {
@@ -50,6 +51,33 @@ const CHECK_OUTPUT_SCHEMA = {
     fixedVersion: {
       type: "string",
       description: "Earliest clean version to recommend. Omitted or null when unknown.",
+    },
+    cveIds: {
+      type: "array",
+      items: { type: "string" },
+      description: "CVE IDs contributing to the risk assessment.",
+    },
+    confidence: {
+      type: "number",
+      description: "Synthesis confidence from 0.0 to 1.0.",
+    },
+    remoteExploitable: {
+      type: "boolean",
+      description: "True when any matching CVE is remotely exploitable.",
+    },
+    authenticationRequired: {
+      type: "boolean",
+      description: "True only when all matching CVEs require authentication.",
+    },
+    typosquat: {
+      type: "object",
+      description: "Typosquat warning when the package name resembles a known product.",
+      properties: {
+        detected: { type: "boolean" },
+        resembles: { type: "string" },
+        confidence: { type: "number" },
+        ecosystem: { type: "string" },
+      },
     },
     supplyChainCompromised: {
       type: "boolean",
@@ -153,7 +181,7 @@ function getClient(apiKey: string | undefined, baseUrl?: string): Client | null 
 
 /**
  * Registers ListTools and CallTool handlers on an MCP Server instance.
- * Used by both stdio (attestd-mcp) and HTTP (Attestd-App/mcp-server).
+ * Used by both stdio (attestd-mcp) and HTTP (this service); HTTP passes apiKey from Authorization.
  */
 export function registerTools(
   server: Server,
@@ -238,8 +266,13 @@ export function registerTools(
                   outsideCoverage: false,
                   riskState: result.riskState,
                   activelyExploited: result.activelyExploited,
+                  remoteExploitable: result.remoteExploitable,
+                  authenticationRequired: result.authenticationRequired,
                   patchAvailable: result.patchAvailable,
                   fixedVersion: result.fixedVersion,
+                  cveIds: result.cveIds,
+                  confidence: result.confidence,
+                  typosquat: result.typosquat,
                   supplyChainCompromised: result.supplyChain?.compromised ?? false,
                   supplyChainDescription: result.supplyChain?.description ?? null,
                 },
@@ -250,10 +283,29 @@ export function registerTools(
           ],
         };
       } catch (err) {
+        if (err instanceof AttestdUnsupportedProductError) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    outsideCoverage: true,
+                    riskState: null,
+                    typosquat: err.typosquat,
+                    message: `No Attestd coverage for '${product}'. Treat as unknown risk, not safe.`,
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          };
+        }
+
         const isUnsupported =
-          err instanceof AttestdUnsupportedProductError ||
-          (err instanceof AttestdAPIError &&
-            err.message.includes("missing 'risk_state'"));
+          err instanceof AttestdAPIError &&
+          err.message.includes("missing 'risk_state'");
 
         if (isUnsupported) {
           return {
