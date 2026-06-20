@@ -46,6 +46,7 @@ export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> 
   { slug: "logstash", display: "Logstash" },
   { slug: "zabbix", display: "Zabbix" },
   { slug: "fluentd", display: "Fluentd" },
+  { slug: "oracle_enterprise_manager_grid_control", display: "Oracle Enterprise Manager Grid Control" },
   { slug: "apache_axis", display: "Apache Axis" },
   { slug: "tomcat", display: "Apache Tomcat" },
   { slug: "jetty", display: "Jetty" },
@@ -54,6 +55,8 @@ export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> 
   { slug: "openssh", display: "OpenSSH" },
   { slug: "vmware_esxi", display: "VMware ESXi" },
   { slug: "hashicorp_vault", display: "HashiCorp Vault" },
+  { slug: "isc_bind", display: "BIND" },
+  { slug: "gnutls", display: "GnuTLS" },
   { slug: "jenkins", display: "Jenkins" },
   { slug: "gitlab", display: "GitLab" },
   { slug: "gitea", display: "Gitea" },
@@ -78,4 +81,4 @@ export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> 
   { slug: "erlang", display: "Erlang/OTP" },
   { slug: "litellm", display: "LiteLLM" },
 ];
-export const COVERED_PRODUCT_COUNT = 74 as const;
+export const COVERED_PRODUCT_COUNT = 77 as const;
