@@ -309,14 +309,15 @@ export function registerTools(
 
         if (isUnsupported) {
           return {
+            isError: true,
             content: [
               {
                 type: "text",
                 text: JSON.stringify(
                   {
-                    outsideCoverage: true,
-                    riskState: null,
-                    message: `No Attestd coverage for '${product}'. Treat as unknown risk, not safe.`,
+                    error:
+                      "Attestd API returned an invalid response (missing risk_state). Retry or check API status.",
+                    product,
                   },
                   null,
                   2,
