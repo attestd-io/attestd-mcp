@@ -13,14 +13,13 @@ import {
 
 import { COVERED_PRODUCT_COUNT, COVERED_PRODUCTS } from "./products.js";
 
-export const SERVER_VERSION = "0.1.2";
+export const SERVER_VERSION = "0.1.5";
 
 const CHECK_DESCRIPTION =
-  "Check whether a software package version has known CVE vulnerabilities or supply chain compromise. " +
-  "Use before deploying or recommending any software dependency. " +
-  "outsideCoverage=true means Attestd has no data. Treat as unknown risk, not safe. " +
-  "Covers infrastructure products (nginx, PostgreSQL, Redis, Docker, Kubernetes, etc.) and " +
-  "PyPI/npm packages for supply chain integrity.";
+  "Check whether a software package or infrastructure product version has known CVE vulnerabilities or a confirmed supply chain compromise. " +
+  "Call this before adding, updating, or recommending any npm, PyPI, or infrastructure dependency, including mid-conversation when a developer asks about installing or upgrading a package. " +
+  "outsideCoverage=true means Attestd has no data for that product; treat as unknown risk, not safe. " +
+  "Covers infrastructure products (nginx, PostgreSQL, Redis, Docker, Kubernetes, etc.) and PyPI/npm packages.";
 
 const LIST_DESCRIPTION =
   "Returns infrastructure product slugs covered by Attestd for CVE checks. " +
