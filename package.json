@@ -1,6 +1,6 @@
 {
   "name": "@attestd/mcp",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "MCP server exposing Attestd CVE and supply-chain checks for Claude Code and other MCP clients",
   "license": "MIT",
   "author": "Attestd <support@attestd.io>",
@@ -44,7 +44,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@attestd/sdk": "^0.1.0",
+    "@attestd/sdk": "^0.3.0",
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
