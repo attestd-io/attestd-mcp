@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.attestd-io/attestd-mcp",
+  "description": "CVE and supply chain checks for MCP clients. Covers infrastructure, PyPI, and npm packages.",
+  "repository": {
+    "url": "https://github.com/attestd-io/attestd-mcp",
+    "source": "github"
+  },
+  "version": "0.2.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@attestd/mcp",
+      "version": "0.2.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ATTESTD_API_KEY",
+          "description": "Attestd API key (atst_...). Required for check_package_vulnerability and check_batch_vulnerabilities. Get one at https://api.attestd.io/portal",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "ATTESTD_BASE_URL",
+          "description": "Optional API base URL override. Defaults to https://api.attestd.io",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

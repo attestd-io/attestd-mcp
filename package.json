@@ -1,6 +1,7 @@
 {
   "name": "@attestd/mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
+  "mcpName": "io.github.attestd-io/attestd-mcp",
   "description": "MCP server exposing Attestd CVE and supply-chain checks for Claude Code and other MCP clients",
   "license": "MIT",
   "author": "Attestd <support@attestd.io>",
