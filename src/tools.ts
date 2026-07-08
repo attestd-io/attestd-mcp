@@ -13,7 +13,7 @@ import {
 
 import { COVERED_PRODUCT_COUNT, COVERED_PRODUCTS } from "./products.js";
 
-export const SERVER_VERSION = "0.2.2";
+export const SERVER_VERSION = "0.3.0";
 
 const CHECK_DESCRIPTION =
   "Check whether a software package or infrastructure product version has known CVE vulnerabilities or a confirmed supply chain compromise. " +
@@ -22,10 +22,7 @@ const CHECK_DESCRIPTION =
   "Covers infrastructure products (nginx, PostgreSQL, Redis, Docker, Kubernetes, etc.) and PyPI/npm packages.";
 
 const LIST_DESCRIPTION =
-  "Returns infrastructure product slugs covered by Attestd for CVE checks. " +
-  "PyPI and npm packages also work with check_package_vulnerability even when absent from this list. " +
-  "Call this first if you are unsure whether an infrastructure slug is supported. " +
-  "Uses a static bundled list. No /v1/check API call for this tool.";
+  "Returns Attestd-covered products for CVE checks. With an API key, returns live data from GET /v1/products (CVE infrastructure slugs plus monitored supply chain packages). Without a key, returns the static bundled infrastructure list. PyPI and npm packages also work with check_package_vulnerability even when absent from this list.";
 
 const CHECK_OUTPUT_SCHEMA = {
   type: "object" as const,
@@ -131,7 +128,31 @@ const LIST_ANNOTATIONS = {
   readOnlyHint: true,
   destructiveHint: false,
   idempotentHint: true,
-  openWorldHint: false,
+  openWorldHint: true,
+};
+
+const GET_CVE_DESCRIPTION =
+  "Return full details for a single CVE id (CVSS, EPSS, KEV status, affected products). " +
+  "Use when you need context on a specific CVE before recommending a patch or explaining risk to a developer.";
+
+const CVE_DETAIL_OUTPUT_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    found: { type: "boolean", description: "False when the CVE id is not in Attestd's database." },
+    cveId: { type: "string" },
+    description: { type: "string" },
+    cvssScore: { type: "number" },
+    cvssVector: { type: "string" },
+    activelyExploited: { type: "boolean" },
+    remoteExploitable: { type: "boolean" },
+    authenticationRequired: { type: "boolean" },
+    affectedProducts: { type: "array", items: { type: "string" } },
+    epssScore: { type: "number" },
+    epssPercentile: { type: "number" },
+    sourcePublishedAt: { type: "string" },
+    lastCheckedAt: { type: "string" },
+    error: { type: "string" },
+  },
 };
 
 const BATCH_DESCRIPTION =
@@ -242,54 +263,146 @@ export const TOOL_DEFINITIONS = [
     outputSchema: BATCH_OUTPUT_SCHEMA,
     annotations: READ_ONLY_ANNOTATIONS,
   },
+  {
+    name: "get_cve_details",
+    description: GET_CVE_DESCRIPTION,
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        cve_id: {
+          type: "string",
+          description: 'CVE identifier, e.g. "CVE-2021-44228"',
+        },
+      },
+      required: ["cve_id"],
+    },
+    outputSchema: CVE_DETAIL_OUTPUT_SCHEMA,
+    annotations: READ_ONLY_ANNOTATIONS,
+  },
 ];
 
-function getClient(apiKey: string | undefined, baseUrl?: string): Client | null {
+function getClient(
+  apiKey: string | undefined,
+  baseUrl?: string,
+  fetchImpl?: typeof fetch,
+): Client | null {
   const key = apiKey?.trim();
   if (!key) return null;
   const url = baseUrl?.trim();
   return new Client({
     apiKey: key,
     ...(url ? { baseUrl: url } : {}),
+    ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
 }
 
+export type ToolCallResult = {
+  content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
+};
+
 /**
- * Registers ListTools and CallTool handlers on an MCP Server instance.
- * Used by both stdio (attestd-mcp) and HTTP (this service); HTTP passes apiKey from Authorization.
+ * Dispatches a single MCP tool call. Exported for unit tests.
  */
-export function registerTools(
-  server: Server,
+export async function handleToolCall(
+  toolName: string,
+  args: Record<string, unknown>,
   apiKey: string | undefined,
   baseUrl?: string,
-): void {
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: TOOL_DEFINITIONS,
-  }));
-
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const toolName = request.params.name;
-    const args = request.params.arguments ?? {};
-
-    if (toolName === "list_covered_products") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
+  fetchImpl?: typeof fetch,
+): Promise<ToolCallResult> {
+  if (toolName === "list_covered_products") {
+    const attestd = getClient(apiKey, baseUrl, fetchImpl);
+    if (attestd) {
+      try {
+        const result = await attestd.products();
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  source: "live",
+                  total: result.total,
+                  cveProducts: result.cveProducts,
+                  supplyChainPackages: result.supplyChainPackages,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (err) {
+        if (err instanceof AttestdAuthError) {
+          return {
+            isError: true,
+            content: [
               {
-                count: COVERED_PRODUCT_COUNT,
-                products: COVERED_PRODUCTS,
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    error:
+                      "Invalid API key. Use a valid atst_... key from https://api.attestd.io/portal",
+                  },
+                  null,
+                  2,
+                ),
               },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+            ],
+          };
+        }
+        if (err instanceof AttestdRateLimitError) {
+          const ra = err.retryAfter;
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    error: `Rate limit exceeded.${ra != null ? ` Retry after ${ra}s.` : ""}`,
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          };
+        }
+        const message =
+          err instanceof Error ? err.message : "An unexpected error occurred.";
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ error: message }, null, 2),
+            },
+          ],
+        };
+      }
     }
 
-    if (toolName === "check_package_vulnerability") {
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            {
+              source: "static",
+              count: COVERED_PRODUCT_COUNT,
+              products: COVERED_PRODUCTS,
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+    };
+  }
+
+  if (toolName === "check_package_vulnerability") {
       const product = typeof args.product === "string" ? args.product : "";
       const version = typeof args.version === "string" ? args.version : "";
       if (!product || !version) {
@@ -310,7 +423,7 @@ export function registerTools(
         };
       }
 
-      const attestd = getClient(apiKey, baseUrl);
+      const attestd = getClient(apiKey, baseUrl, fetchImpl);
       if (!attestd) {
         return {
           isError: true,
@@ -519,7 +632,7 @@ export function registerTools(
         items.push({ product, version });
       }
 
-      const attestd = getClient(apiKey, baseUrl);
+      const attestd = getClient(apiKey, baseUrl, fetchImpl);
       if (!attestd) {
         return {
           isError: true,
@@ -614,14 +727,157 @@ export function registerTools(
       }
     }
 
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({ error: `Unknown tool: ${toolName}` }, null, 2),
-        },
-      ],
-    };
+  if (toolName === "get_cve_details") {
+    const cveId = typeof args.cve_id === "string" ? args.cve_id.trim() : "";
+    if (!cveId) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ error: "cve_id is required." }, null, 2),
+          },
+        ],
+      };
+    }
+
+    const attestd = getClient(apiKey, baseUrl, fetchImpl);
+    if (!attestd) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                error:
+                  "A valid Attestd API key is required. Set ATTESTD_API_KEY (stdio) or pass Authorization: Bearer (HTTP).",
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    }
+
+    try {
+      const detail = await attestd.cve(cveId);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                found: true,
+                cveId: detail.cveId,
+                description: detail.description,
+                cvssScore: detail.cvssScore,
+                cvssVector: detail.cvssVector,
+                activelyExploited: detail.activelyExploited,
+                remoteExploitable: detail.remoteExploitable,
+                authenticationRequired: detail.authenticationRequired,
+                affectedProducts: detail.affectedProducts,
+                epssScore: detail.epssScore,
+                epssPercentile: detail.epssPercentile,
+                sourcePublishedAt: detail.sourcePublishedAt?.toISOString() ?? null,
+                lastCheckedAt: detail.lastCheckedAt?.toISOString() ?? null,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (err) {
+      if (err instanceof AttestdAPIError && err.statusCode === 404) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ found: false, cveId }, null, 2),
+            },
+          ],
+        };
+      }
+      if (err instanceof AttestdAuthError) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  error:
+                    "Invalid API key. Use a valid atst_... key from https://api.attestd.io/portal",
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+      if (err instanceof AttestdRateLimitError) {
+        const ra = err.retryAfter;
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  error: `Rate limit exceeded.${ra != null ? ` Retry after ${ra}s.` : ""}`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+      const message =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ error: message }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({ error: `Unknown tool: ${toolName}` }, null, 2),
+      },
+    ],
+  };
+}
+
+/**
+ * Registers ListTools and CallTool handlers on an MCP Server instance.
+ * Used by both stdio (attestd-mcp) and HTTP (this service); HTTP passes apiKey from Authorization.
+ */
+export function registerTools(
+  server: Server,
+  apiKey: string | undefined,
+  baseUrl?: string,
+  fetchImpl?: typeof fetch,
+): void {
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: TOOL_DEFINITIONS,
+  }));
+
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const toolName = request.params.name;
+    const args = (request.params.arguments ?? {}) as Record<string, unknown>;
+    return handleToolCall(toolName, args, apiKey, baseUrl, fetchImpl);
   });
 }
