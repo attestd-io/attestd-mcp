@@ -36,6 +36,15 @@ const CHECK_OUTPUT_SCHEMA = {
       description:
         'Risk band: "critical", "high", "elevated", "low", "none", or null when outside coverage.',
     },
+    riskFactors: {
+      type: "array",
+      items: { type: "string" },
+      description: "Risk factor vocabulary driving riskState.",
+    },
+    maxEpss: {
+      type: "number",
+      description: "Highest EPSS probability across matching CVEs. Omitted or null when unavailable.",
+    },
     activelyExploited: {
       type: "boolean",
       description: "True when the version appears in the CISA KEV catalog.",
@@ -97,13 +106,19 @@ const CHECK_OUTPUT_SCHEMA = {
 const LIST_OUTPUT_SCHEMA = {
   type: "object" as const,
   properties: {
+    source: {
+      type: "string",
+      enum: ["static", "live"],
+      description:
+        "static when no API key is provided; live when fetched from GET /v1/products.",
+    },
     count: {
       type: "integer",
-      description: "Number of covered infrastructure products.",
+      description: "Number of covered infrastructure products (static source only).",
     },
     products: {
       type: "array",
-      description: "Covered products with slug and display name.",
+      description: "Covered CVE infrastructure products (static source only).",
       items: {
         type: "object",
         properties: {
@@ -113,8 +128,34 @@ const LIST_OUTPUT_SCHEMA = {
         required: ["slug", "display"],
       },
     },
+    total: {
+      type: "integer",
+      description: "Total covered CVE products plus supply chain packages (live source only).",
+    },
+    cveProducts: {
+      type: "array",
+      description: "CVE infrastructure products from GET /v1/products (live source only).",
+      items: {
+        type: "object",
+        properties: {
+          slug: { type: "string" },
+          displayName: { type: "string" },
+        },
+      },
+    },
+    supplyChainPackages: {
+      type: "array",
+      description: "Monitored PyPI and npm packages from GET /v1/products (live source only).",
+      items: {
+        type: "object",
+        properties: {
+          package: { type: "string" },
+          ecosystem: { type: "string" },
+          displayName: { type: ["string", "null"] },
+        },
+      },
+    },
   },
-  required: ["count", "products"],
 };
 
 const READ_ONLY_ANNOTATIONS = {
@@ -183,6 +224,8 @@ const BATCH_OUTPUT_SCHEMA = {
             type: "string",
             description: 'Risk band: "critical", "high", "elevated", "low", "none", or null when outside coverage.',
           },
+          riskFactors: { type: "array", items: { type: "string" } },
+          maxEpss: { type: "number" },
           activelyExploited: { type: "boolean" },
           remoteExploitable: { type: "boolean" },
           authenticationRequired: { type: "boolean" },
@@ -453,6 +496,8 @@ export async function handleToolCall(
                 {
                   outsideCoverage: false,
                   riskState: result.riskState,
+                  riskFactors: result.riskFactors,
+                  maxEpss: result.maxEpss,
                   activelyExploited: result.activelyExploited,
                   remoteExploitable: result.remoteExploitable,
                   authenticationRequired: result.authenticationRequired,
@@ -668,6 +713,8 @@ export async function handleToolCall(
             version: items[i].version,
             outsideCoverage: false,
             riskState: result.riskState,
+            riskFactors: result.riskFactors,
+            maxEpss: result.maxEpss,
             activelyExploited: result.activelyExploited,
             remoteExploitable: result.remoteExploitable,
             authenticationRequired: result.authenticationRequired,
