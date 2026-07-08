@@ -1,6 +1,6 @@
 # Smithery: https://smithery.ai/docs
 name: "@attestd/mcp"
-description: "CVE vulnerability and supply chain integrity checks for Claude Code and MCP clients (Attestd API)"
+description: "CVE vulnerability, supply chain integrity, product catalog, and CVE detail tools for Claude Code and MCP clients (Attestd API)"
 startCommand:
   type: stdio
   configSchema:
@@ -8,7 +8,7 @@ startCommand:
     properties:
       ATTESTD_API_KEY:
         type: string
-        description: "Attestd API key (atst_...) — required for check_package_vulnerability and check_batch_vulnerabilities"
+        description: "Attestd API key (atst_...) — required for check_package_vulnerability, check_batch_vulnerabilities, get_cve_details, and live list_covered_products"
       ATTESTD_BASE_URL:
         type: string
         description: "Optional API base URL override (default https://api.attestd.io)"

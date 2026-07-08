@@ -12,12 +12,13 @@ Official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server 
 - **stdio transport**: run via `npx -y @attestd/mcp` with no global install.
 - **`check_package_vulnerability`**: wraps [`GET /v1/check`](https://attestd.io/docs/api-reference) using [`@attestd/sdk`](https://www.npmjs.com/package/@attestd/sdk).
 - **`check_batch_vulnerabilities`**: checks up to 100 packages in one call. Use for lockfile and manifest audits.
-- **`list_covered_products`**: returns supported infrastructure product slugs (static list). No API key required.
+- **`list_covered_products`**: returns Attestd-covered products. With an API key, returns live data from `GET /v1/products`. Without a key, returns the static bundled infrastructure list.
+- **`get_cve_details`**: returns CVSS, EPSS, KEV status, and affected products for a single CVE id.
 
 ## Prerequisites
 
 - Node.js 18+
-- An Attestd API key from the [portal](https://api.attestd.io/portal/login). Required for `check_package_vulnerability` and `check_batch_vulnerabilities`.
+- An Attestd API key from the [portal](https://api.attestd.io/portal/login). Required for `check_package_vulnerability`, `check_batch_vulnerabilities`, `get_cve_details`, and live `list_covered_products`.
 
 ## Claude Code / MCP config
 
@@ -85,7 +86,45 @@ Returns JSON with `count` and `results`. Supported items include the same fields
 
 ### `list_covered_products`
 
-No arguments. Returns JSON with `count` and `products` (`slug` + `display` for each covered infrastructure product).
+No arguments. With an API key, returns live JSON from `GET /v1/products`:
+
+| Field | Meaning |
+| ----- | ------- |
+| `source` | `"live"` when fetched from the API |
+| `total` | Combined count of CVE products and supply chain packages |
+| `cveProducts` | CVE infrastructure slugs with display names |
+| `supplyChainPackages` | Monitored PyPI/npm packages |
+
+Without an API key, returns the static bundled list:
+
+| Field | Meaning |
+| ----- | ------- |
+| `source` | `"static"` |
+| `count` | Number of bundled infrastructure products |
+| `products` | Array of `{ slug, display }` entries |
+
+### `get_cve_details`
+
+| Argument | Type   | Description |
+| -------- | ------ | ----------- |
+| `cve_id` | string | CVE identifier, e.g. `CVE-2021-44228` |
+
+Returns JSON with:
+
+| Field | Meaning |
+| ----- | ------- |
+| `found` | `true` when the CVE is in Attestd's database; `false` on 404 (not an error) |
+| `cveId` | CVE identifier |
+| `description` | NVD description text |
+| `cvssScore` / `cvssVector` | CVSS base score and vector |
+| `activelyExploited` | CISA KEV signal |
+| `remoteExploitable` | Remotely exploitable |
+| `authenticationRequired` | Authentication required for exploitation |
+| `affectedProducts` | Attestd product slugs affected by this CVE |
+| `epssScore` / `epssPercentile` | EPSS probability and percentile |
+| `sourcePublishedAt` / `lastCheckedAt` | ISO timestamps |
+
+When the CVE is not found, returns `{ "found": false, "cveId": "..." }` without `isError`. On invalid/missing API key or rate limit, returns `isError: true` with a JSON `error` string.
 
 ## Verify locally
 

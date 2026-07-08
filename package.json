@@ -2,7 +2,7 @@
   "name": "@attestd/mcp",
   "version": "0.3.0",
   "mcpName": "io.github.attestd-io/attestd-mcp",
-  "description": "MCP server exposing Attestd CVE and supply-chain checks for Claude Code and other MCP clients",
+  "description": "MCP server exposing Attestd CVE checks, supply-chain signals, product catalog, and CVE detail lookup for Claude Code and other MCP clients",
   "license": "MIT",
   "author": "Attestd <support@attestd.io>",
   "homepage": "https://attestd.io",
@@ -46,7 +46,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@attestd/sdk": "file:../attestd-js",
+    "@attestd/sdk": "^0.5.0",
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
