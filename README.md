@@ -11,12 +11,13 @@ Official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server 
 
 - **stdio transport**: run via `npx -y @attestd/mcp` with no global install.
 - **`check_package_vulnerability`**: wraps [`GET /v1/check`](https://attestd.io/docs/api-reference) using [`@attestd/sdk`](https://www.npmjs.com/package/@attestd/sdk).
+- **`check_batch_vulnerabilities`**: checks up to 100 packages in one call. Use for lockfile and manifest audits.
 - **`list_covered_products`**: returns supported infrastructure product slugs (static list). No API key required.
 
 ## Prerequisites
 
 - Node.js 18+
-- An Attestd API key from the [portal](https://api.attestd.io/portal/login). Required only for `check_package_vulnerability`.
+- An Attestd API key from the [portal](https://api.attestd.io/portal/login). Required for `check_package_vulnerability` and `check_batch_vulnerabilities`.
 
 ## Claude Code / MCP config
 
@@ -54,17 +55,33 @@ Optional: override the API base URL (e.g. dev):
 | `product` | string | Product slug (`nginx`, `postgresql`, `litellm`, …) |
 | `version` | string | Exact version (`1.20.0`) |
 
-Returns JSON (text content) with:
+Returns JSON with:
 
 | Field | Meaning |
 | ----- | ------- |
 | `outsideCoverage` | `true` if the product is not covered. Unknown risk, not safe. |
 | `riskState` | `critical` \| `high` \| `elevated` \| `low` \| `none` \| `null` when outside coverage |
 | `activelyExploited` | CISA KEV signal |
+| `remoteExploitable` | `true` if any matching CVE is remotely exploitable |
+| `authenticationRequired` | `true` only when all matching CVEs require authentication |
 | `patchAvailable` / `fixedVersion` | Patch guidance |
+| `confidence` | Synthesis confidence 0.0–1.0 |
+| `cveIds` | CVE IDs contributing to the risk assessment |
+| `typosquat` | Present when the package name resembles a known product |
+| `message` | Explanation when `outsideCoverage` is true |
 | `supplyChainCompromised` / `supplyChainDescription` | PyPI/npm supply-chain signal |
 
 On invalid/missing API key or rate limit, returns `isError: true` with a JSON `error` string.
+
+### `check_batch_vulnerabilities`
+
+| Argument | Type  | Description |
+| -------- | ----- | ----------- |
+| `items`  | array | Array of `{ product, version }` objects. Maximum 100 per call. Each item costs one API call. |
+
+Quota is checked upfront. If the batch would exceed your monthly quota, a 429 is returned before any calls are billed.
+
+Returns JSON with `count` and `results`. Supported items include the same fields as `check_package_vulnerability` minus `typosquat`. Outside-coverage items return only `product`, `version`, `outsideCoverage: true`, and `riskState: null`.
 
 ### `list_covered_products`
 

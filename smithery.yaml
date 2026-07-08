@@ -8,7 +8,7 @@ startCommand:
     properties:
       ATTESTD_API_KEY:
         type: string
-        description: "Attestd API key (atst_...) — required for check_package_vulnerability only"
+        description: "Attestd API key (atst_...) — required for check_package_vulnerability and check_batch_vulnerabilities"
       ATTESTD_BASE_URL:
         type: string
         description: "Optional API base URL override (default https://api.attestd.io)"
