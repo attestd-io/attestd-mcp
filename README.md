@@ -68,7 +68,7 @@ Returns JSON with:
 | `patchAvailable` / `fixedVersion` | Patch guidance |
 | `confidence` | Synthesis confidence 0.0–1.0 |
 | `cveIds` | CVE IDs contributing to the risk assessment |
-| `typosquat` | Present when the package name resembles a known product |
+| `typosquat` | Package name integrity: typosquat or AI-hallucinated name (`kind`, `resembles`, `likely_intended`) |
 | `message` | Explanation when `outsideCoverage` is true |
 | `supplyChainCompromised` / `supplyChainDescription` | PyPI/npm supply-chain signal |
 
