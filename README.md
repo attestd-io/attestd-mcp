@@ -62,13 +62,15 @@ Returns JSON with:
 | ----- | ------- |
 | `outsideCoverage` | `true` if the product is not covered. Unknown risk, not safe. |
 | `riskState` | `critical` \| `high` \| `elevated` \| `low` \| `none` \| `null` when outside coverage |
+| `riskFactors` | Risk factor vocabulary driving `riskState` |
+| `maxEpss` | Highest EPSS probability across matching CVEs |
 | `activelyExploited` | CISA KEV signal |
 | `remoteExploitable` | `true` if any matching CVE is remotely exploitable |
 | `authenticationRequired` | `true` only when all matching CVEs require authentication |
 | `patchAvailable` / `fixedVersion` | Patch guidance |
 | `confidence` | Synthesis confidence 0.0–1.0 |
 | `cveIds` | CVE IDs contributing to the risk assessment |
-| `typosquat` | Package name integrity: typosquat or AI-hallucinated name (`kind`, `resembles`, `likely_intended`) |
+| `typosquat` | Package name integrity: `detected`, `resembles`, `confidence`, `ecosystem` (SDK 0.5 runtime; extra fields are omitted) |
 | `message` | Explanation when `outsideCoverage` is true |
 | `supplyChainCompromised` / `supplyChainDescription` | PyPI/npm supply-chain signal |
 

@@ -80,15 +80,7 @@ const CHECK_OUTPUT_SCHEMA = {
         "Package name integrity signal when the name is a typosquat or AI-hallucinated package.",
       properties: {
         detected: { type: "boolean" },
-        kind: {
-          type: "string",
-          description: 'typosquat or hallucination',
-        },
         resembles: { type: "string" },
-        likely_intended: {
-          type: "array",
-          items: { type: "string" },
-        },
         confidence: { type: "number" },
         ecosystem: { type: "string" },
       },
