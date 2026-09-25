@@ -7,7 +7,7 @@ npm install
 npm run build
 ```
 
-`prebuild` regenerates `src/products.ts` from `../Attestd-website/lib/products.ts` via `scripts/gen-products.mjs`. Run from a checkout that has **both** `attestd-mcp` and `Attestd-website` under the same parent directory, or edit `src/products.ts` manually.
+`prebuild` regenerates `src/products.ts` from `../attestd-website/lib/products.ts` via `scripts/gen-products.mjs` (also accepts `../Attestd-website/...`). Run from a checkout that has **both** `attestd-mcp` and `attestd-website` under the same parent directory, or edit `src/products.ts` manually.
 
 ## Local MCP smoke test (stdio)
 

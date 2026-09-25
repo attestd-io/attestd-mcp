@@ -13,7 +13,7 @@ import {
 
 import { COVERED_PRODUCT_COUNT, COVERED_PRODUCTS } from "./products.js";
 
-export const SERVER_VERSION = "0.3.0";
+export const SERVER_VERSION = "0.3.1";
 
 const CHECK_DESCRIPTION =
   "Check whether a software package or infrastructure product version has known CVE vulnerabilities or a confirmed supply chain compromise. " +
@@ -80,15 +80,7 @@ const CHECK_OUTPUT_SCHEMA = {
         "Package name integrity signal when the name is a typosquat or AI-hallucinated package.",
       properties: {
         detected: { type: "boolean" },
-        kind: {
-          type: "string",
-          description: 'typosquat or hallucination',
-        },
         resembles: { type: "string" },
-        likely_intended: {
-          type: "array",
-          items: { type: "string" },
-        },
         confidence: { type: "number" },
         ecosystem: { type: "string" },
       },

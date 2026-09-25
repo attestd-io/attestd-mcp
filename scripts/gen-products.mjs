@@ -4,11 +4,16 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const websitePath = path.join(__dirname, "..", "..", "Attestd-website", "lib", "products.ts");
-if (!fs.existsSync(websitePath)) {
+const websiteCandidates = [
+  ["attestd-website", "lib", "products.ts"],
+  ["Attestd-website", "lib", "products.ts"],
+];
+const websitePath = websiteCandidates
+  .map((parts) => path.join(__dirname, "..", "..", ...parts))
+  .find((p) => fs.existsSync(p));
+if (!websitePath) {
   console.warn(
-    "gen-products: %s not found, skipping (using committed src/products.ts)",
-    websitePath,
+    "gen-products: sibling attestd-website/lib/products.ts not found, skipping (using committed src/products.ts)",
   );
   process.exit(0);
 }
@@ -27,7 +32,7 @@ if (items.length < 50) {
 const lines = [
   "/**",
   " * Covered infrastructure products (CVE risk via /v1/check).",
-  " * Keep in sync with Attestd-website/lib/products.ts when adding products.",
+  " * Keep in sync with attestd-website/lib/products.ts when adding products.",
   " */",
   "export const COVERED_PRODUCTS: ReadonlyArray<{ slug: string; display: string }> = [",
 ];
