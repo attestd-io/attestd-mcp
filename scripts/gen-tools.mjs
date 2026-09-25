@@ -4,19 +4,16 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const sourcePath = path.join(
-  __dirname,
-  "..",
-  "..",
-  "Attestd-App",
-  "mcp-server",
-  "src",
-  "tools.ts",
-);
-if (!fs.existsSync(sourcePath)) {
+const appCandidates = [
+  ["attestd-app", "mcp-server", "src", "tools.ts"],
+  ["Attestd-App", "mcp-server", "src", "tools.ts"],
+];
+const sourcePath = appCandidates
+  .map((parts) => path.join(__dirname, "..", "..", ...parts))
+  .find((p) => fs.existsSync(p));
+if (!sourcePath) {
   console.warn(
-    "gen-tools: %s not found, skipping (using committed src/tools.ts)",
-    sourcePath,
+    "gen-tools: sibling attestd-app/mcp-server/src/tools.ts not found, skipping (using committed src/tools.ts)",
   );
   process.exit(0);
 }
@@ -24,4 +21,4 @@ if (!fs.existsSync(sourcePath)) {
 const destPath = path.join(__dirname, "..", "src", "tools.ts");
 fs.mkdirSync(path.dirname(destPath), { recursive: true });
 fs.copyFileSync(sourcePath, destPath);
-console.log("Copied tools.ts from Attestd-App/mcp-server");
+console.log("Copied tools.ts from", sourcePath);
