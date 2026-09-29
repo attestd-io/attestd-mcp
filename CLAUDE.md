@@ -10,7 +10,7 @@ npm run build
 `prebuild` runs two generators:
 
 - `scripts/gen-products.mjs` regenerates `src/products.ts` from `../attestd-website/lib/products.ts` (also accepts `../Attestd-website/...`).
-- `scripts/gen-tools.mjs` copies `src/tools.ts` from `../attestd-app/mcp-server/src/tools.ts` (also accepts `../Attestd-App/...`) when that sibling exists.
+- `scripts/gen-tools.mjs` copies `src/tools.ts` from `../attestd-app/mcp-server/src/tools.ts` (also accepts `../Attestd-App/...`) when that sibling exists and `SERVER_VERSION` matches the committed mcp file. A version mismatch, or a sibling that still advertises `likely_intended` after mcp dropped it, skips the copy so a local `npm run build` cannot revert the published schema.
 
 Run from a checkout that has **attestd-mcp** plus the website (and optionally attestd-app) under the same parent directory, or edit the generated files manually.
 
