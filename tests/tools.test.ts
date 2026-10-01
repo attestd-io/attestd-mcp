@@ -75,6 +75,25 @@ describe("handleToolCall", () => {
     const payload = JSON.parse(result.content[0]?.text ?? "{}");
     expect(payload.error).toContain("API key");
   });
+
+  it("check_package_vulnerability rejects whitespace-only product and version", async () => {
+    let called = false;
+    const fetchImpl: typeof fetch = async () => {
+      called = true;
+      return jsonResponse({ error: "should not be called" }, 500);
+    };
+    const result = await handleToolCall(
+      "check_package_vulnerability",
+      { product: "   ", version: "\t" },
+      "atst_test",
+      undefined,
+      fetchImpl,
+    );
+    expect(called).toBe(false);
+    expect(result.isError).toBe(true);
+    const payload = JSON.parse(result.content[0]?.text ?? "{}");
+    expect(payload.error).toContain("product and version are required");
+  });
 });
 
 const NGINX_CHECK_BODY = {
@@ -104,10 +123,23 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("handleToolCall check and batch", () => {
   it("check_package_vulnerability returns risk fields including maxEpss", async () => {
-    const fetchImpl: typeof fetch = async () => jsonResponse(NGINX_CHECK_BODY);
+    const fetchImpl: typeof fetch = async (input) => {
+      const href =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input instanceof Request
+              ? input.url
+              : String(input);
+      const url = new URL(href);
+      expect(url.searchParams.get("product")).toBe("nginx");
+      expect(url.searchParams.get("version")).toBe("1.20.0");
+      return jsonResponse(NGINX_CHECK_BODY);
+    };
     const result = await handleToolCall(
       "check_package_vulnerability",
-      { product: "nginx", version: "1.20.0" },
+      { product: "  nginx  ", version: "  1.20.0  " },
       "atst_test",
       undefined,
       fetchImpl,
