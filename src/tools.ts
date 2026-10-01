@@ -447,8 +447,8 @@ export async function handleToolCall(
   }
 
   if (toolName === "check_package_vulnerability") {
-      const product = typeof args.product === "string" ? args.product : "";
-      const version = typeof args.version === "string" ? args.version : "";
+      const product = typeof args.product === "string" ? args.product.trim() : "";
+      const version = typeof args.version === "string" ? args.version.trim() : "";
       if (!product || !version) {
         return {
           isError: true,
