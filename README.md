@@ -14,11 +14,12 @@ Official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server 
 - **`check_batch_vulnerabilities`**: checks up to 100 packages in one call. Use for lockfile and manifest audits.
 - **`list_covered_products`**: returns Attestd-covered products. With an API key, returns live data from `GET /v1/products`. Without a key, returns the static bundled infrastructure list.
 - **`get_cve_details`**: returns CVSS, EPSS, KEV status, and affected products for a single CVE id.
+- **`get_usage`**: returns remaining quota for the authenticated key (`GET /v1/usage`).
 
 ## Prerequisites
 
 - Node.js 18+
-- An Attestd API key from the [portal](https://api.attestd.io/portal/login). Required for `check_package_vulnerability`, `check_batch_vulnerabilities`, `get_cve_details`, and live `list_covered_products`.
+- An Attestd API key from the [portal](https://api.attestd.io/portal/login). Required for `check_package_vulnerability`, `check_batch_vulnerabilities`, `get_cve_details`, `get_usage`, and live `list_covered_products`.
 
 ## Claude Code / MCP config
 
@@ -127,6 +128,21 @@ Returns JSON with:
 | `sourcePublishedAt` / `lastCheckedAt` | ISO timestamps |
 
 When the CVE is not found, returns `{ "found": false, "cveId": "..." }` without `isError`. On invalid/missing API key or rate limit, returns `isError: true` with a JSON `error` string.
+
+### `get_usage`
+
+No arguments. Requires an API key. Returns JSON from `GET /v1/usage`:
+
+| Field | Meaning |
+| ----- | ------- |
+| `tier` | Account plan tier |
+| `keyCallsThisMonth` | Calls billed to this key in the current period |
+| `accountCallsThisMonth` | Calls billed across all keys on the account |
+| `includedCalls` | Monthly included call cap |
+| `billingPeriodStart` / `billingPeriodEnd` | ISO timestamps |
+| `overageCalls` / `estimatedOverageUsd` | Overage vs the included cap |
+
+On invalid/missing API key or rate limit, returns `isError: true` with a JSON `error` string.
 
 ## Verify locally
 

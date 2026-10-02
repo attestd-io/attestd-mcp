@@ -46,6 +46,54 @@ describe("handleToolCall", () => {
     expect(payload.epssScore).toBeCloseTo(0.97568);
   });
 
+  it("get_usage happy path", async () => {
+    const fetchImpl: typeof fetch = async (input) => {
+      const href =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input instanceof Request
+              ? input.url
+              : String(input);
+      expect(href).toContain("/v1/usage");
+      return new Response(
+        JSON.stringify({
+          tier: "solo",
+          key_calls_this_month: 1200,
+          account_calls_this_month: 1200,
+          included_calls: 10000,
+          billing_period_start: "2026-07-01T00:00:00Z",
+          billing_period_end: "2026-08-01T00:00:00Z",
+          overage_calls: 0,
+          estimated_overage_usd: 0.0,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+
+    const result = await handleToolCall(
+      "get_usage",
+      {},
+      "atst_test",
+      undefined,
+      fetchImpl,
+    );
+    expect(result.isError).toBeUndefined();
+    const payload = JSON.parse(result.content[0]?.text ?? "{}");
+    expect(payload.tier).toBe("solo");
+    expect(payload.keyCallsThisMonth).toBe(1200);
+    expect(payload.includedCalls).toBe(10000);
+    expect(payload.billingPeriodStart).toBe("2026-07-01T00:00:00.000Z");
+  });
+
+  it("get_usage missing key returns error", async () => {
+    const result = await handleToolCall("get_usage", {}, undefined);
+    expect(result.isError).toBe(true);
+    const payload = JSON.parse(result.content[0]?.text ?? "{}");
+    expect(payload.error).toContain("API key");
+  });
+
   it("get_cve_details 404 returns not found", async () => {
     const fetchImpl: typeof fetch = async () =>
       new Response(JSON.stringify({ detail: "CVE not found" }), {
