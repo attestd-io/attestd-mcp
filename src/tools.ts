@@ -177,6 +177,10 @@ const GET_CVE_DESCRIPTION =
   "Return full details for a single CVE id (CVSS, EPSS, KEV status, affected products). " +
   "Use when you need context on a specific CVE before recommending a patch or explaining risk to a developer.";
 
+const GET_USAGE_DESCRIPTION =
+  "Return Attestd API quota for the authenticated key: calls used this month, included cap, billing period, and overage. " +
+  "Call this before a large check_batch_vulnerabilities audit so you do not hit a 429 mid-lockfile.";
+
 const CVE_DETAIL_OUTPUT_SCHEMA = {
   type: "object" as const,
   properties: {
@@ -193,6 +197,36 @@ const CVE_DETAIL_OUTPUT_SCHEMA = {
     epssPercentile: { type: "number" },
     sourcePublishedAt: { type: "string" },
     lastCheckedAt: { type: "string" },
+    error: { type: "string" },
+  },
+};
+
+const USAGE_OUTPUT_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    tier: { type: "string", description: "Account plan tier." },
+    keyCallsThisMonth: {
+      type: "integer",
+      description: "Calls billed to this API key in the current billing period.",
+    },
+    accountCallsThisMonth: {
+      type: "integer",
+      description: "Calls billed across all keys on the account in the current billing period.",
+    },
+    includedCalls: {
+      type: "integer",
+      description: "Monthly included call cap for the tier.",
+    },
+    billingPeriodStart: { type: "string", description: "ISO 8601 billing period start." },
+    billingPeriodEnd: { type: "string", description: "ISO 8601 billing period end." },
+    overageCalls: {
+      type: "integer",
+      description: "Calls above includedCalls this period.",
+    },
+    estimatedOverageUsd: {
+      type: "number",
+      description: "Estimated overage charge in USD.",
+    },
     error: { type: "string" },
   },
 };
@@ -321,6 +355,16 @@ export const TOOL_DEFINITIONS = [
       required: ["cve_id"],
     },
     outputSchema: CVE_DETAIL_OUTPUT_SCHEMA,
+    annotations: READ_ONLY_ANNOTATIONS,
+  },
+  {
+    name: "get_usage",
+    description: GET_USAGE_DESCRIPTION,
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+    },
+    outputSchema: USAGE_OUTPUT_SCHEMA,
     annotations: READ_ONLY_ANNOTATIONS,
   },
 ];
@@ -848,6 +892,101 @@ export async function handleToolCall(
           ],
         };
       }
+      if (err instanceof AttestdAuthError) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  error:
+                    "Invalid API key. Use a valid atst_... key from https://api.attestd.io/portal",
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+      if (err instanceof AttestdRateLimitError) {
+        const ra = err.retryAfter;
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  error: `Rate limit exceeded.${ra != null ? ` Retry after ${ra}s.` : ""}`,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      }
+      const message =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ error: message }, null, 2),
+          },
+        ],
+      };
+    }
+  }
+
+  if (toolName === "get_usage") {
+    const attestd = getClient(apiKey, baseUrl, fetchImpl);
+    if (!attestd) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                error:
+                  "A valid Attestd API key is required. Set ATTESTD_API_KEY (stdio) or pass Authorization: Bearer (HTTP).",
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    }
+
+    try {
+      const usage = await attestd.usage();
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                tier: usage.tier,
+                keyCallsThisMonth: usage.keyCallsThisMonth,
+                accountCallsThisMonth: usage.accountCallsThisMonth,
+                includedCalls: usage.includedCalls,
+                billingPeriodStart: usage.billingPeriodStart.toISOString(),
+                billingPeriodEnd: usage.billingPeriodEnd.toISOString(),
+                overageCalls: usage.overageCalls,
+                estimatedOverageUsd: usage.estimatedOverageUsd,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (err) {
       if (err instanceof AttestdAuthError) {
         return {
           isError: true,

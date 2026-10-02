@@ -18,7 +18,7 @@
       "environmentVariables": [
         {
           "name": "ATTESTD_API_KEY",
-          "description": "Attestd API key (atst_...). Required for check_package_vulnerability, check_batch_vulnerabilities, get_cve_details, and live list_covered_products. Get one at https://api.attestd.io/portal",
+          "description": "Attestd API key (atst_...). Required for check_package_vulnerability, check_batch_vulnerabilities, get_cve_details, get_usage, and live list_covered_products. Get one at https://api.attestd.io/portal",
           "isRequired": false,
           "isSecret": true,
           "format": "string"
