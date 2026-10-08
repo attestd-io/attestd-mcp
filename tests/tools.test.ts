@@ -2,10 +2,16 @@ import { describe, it, expect } from "vitest";
 import { handleToolCall } from "../src/tools.js";
 import { COVERED_PRODUCT_COUNT } from "../src/products.js";
 
+function expectSuccessStructured(result: Awaited<ReturnType<typeof handleToolCall>>) {
+  expect(result.isError).toBeUndefined();
+  expect(result.structuredContent).toBeDefined();
+  expect(result.structuredContent).toEqual(JSON.parse(result.content[0]?.text ?? "{}"));
+}
+
 describe("handleToolCall", () => {
   it("list_covered_products returns static list without key", async () => {
     const result = await handleToolCall("list_covered_products", {}, undefined);
-    expect(result.isError).toBeUndefined();
+    expectSuccessStructured(result);
     const payload = JSON.parse(result.content[0]?.text ?? "{}");
     expect(payload.source).toBe("static");
     expect(payload.count).toBe(COVERED_PRODUCT_COUNT);
@@ -39,6 +45,7 @@ describe("handleToolCall", () => {
       undefined,
       fetchImpl,
     );
+    expectSuccessStructured(result);
     const payload = JSON.parse(result.content[0]?.text ?? "{}");
     expect(payload.found).toBe(true);
     expect(payload.cveId).toBe("CVE-2021-44228");
@@ -79,7 +86,7 @@ describe("handleToolCall", () => {
       undefined,
       fetchImpl,
     );
-    expect(result.isError).toBeUndefined();
+    expectSuccessStructured(result);
     const payload = JSON.parse(result.content[0]?.text ?? "{}");
     expect(payload.tier).toBe("solo");
     expect(payload.keyCallsThisMonth).toBe(1200);
@@ -108,6 +115,7 @@ describe("handleToolCall", () => {
       undefined,
       fetchImpl,
     );
+    expectSuccessStructured(result);
     const payload = JSON.parse(result.content[0]?.text ?? "{}");
     expect(payload.found).toBe(false);
     expect(payload.cveId).toBe("CVE-9999-99999");
@@ -192,7 +200,7 @@ describe("handleToolCall check and batch", () => {
       undefined,
       fetchImpl,
     );
-    expect(result.isError).toBeUndefined();
+    expectSuccessStructured(result);
     const payload = JSON.parse(result.content[0]?.text ?? "{}");
     expect(payload.outsideCoverage).toBe(false);
     expect(payload.riskState).toBe("high");
@@ -225,12 +233,27 @@ describe("handleToolCall check and batch", () => {
       undefined,
       fetchImpl,
     );
-    expect(result.isError).toBeUndefined();
+    expectSuccessStructured(result);
     const payload = JSON.parse(result.content[0]?.text ?? "{}");
     expect(payload.count).toBe(1);
     expect(payload.results[0].product).toBe("nginx");
     expect(payload.results[0].riskState).toBe("high");
     expect(payload.results[0].maxEpss).toBeCloseTo(0.12);
     expect(payload.results[0].cveIds).toEqual(["CVE-2021-23017"]);
+  });
+
+  it("check_package_vulnerability outside coverage includes structuredContent with null riskState", async () => {
+    const fetchImpl: typeof fetch = async () => jsonResponse({ detail: "not found" }, 404);
+    const result = await handleToolCall(
+      "check_package_vulnerability",
+      { product: "unknown-lib", version: "1.0.0" },
+      "atst_test",
+      undefined,
+      fetchImpl,
+    );
+    expectSuccessStructured(result);
+    expect(result.structuredContent?.outsideCoverage).toBe(true);
+    expect(result.structuredContent?.riskState).toBeNull();
+    expect(result.structuredContent?.typosquat).toBeNull();
   });
 });

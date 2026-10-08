@@ -32,7 +32,7 @@ const CHECK_OUTPUT_SCHEMA = {
       description: "True when Attestd has no CVE data for this product. Unknown risk, not safe.",
     },
     riskState: {
-      type: "string",
+      type: ["string", "null"],
       description:
         'Risk band: "critical", "high", "elevated", "low", "none", or null when outside coverage.',
     },
@@ -42,7 +42,7 @@ const CHECK_OUTPUT_SCHEMA = {
       description: "Risk factor vocabulary driving riskState.",
     },
     maxEpss: {
-      type: "number",
+      type: ["number", "null"],
       description: "Highest EPSS probability across matching CVEs. Omitted or null when unavailable.",
     },
     activelyExploited: {
@@ -54,7 +54,7 @@ const CHECK_OUTPUT_SCHEMA = {
       description: "True when a fixed version with no critical/high CVEs is known.",
     },
     fixedVersion: {
-      type: "string",
+      type: ["string", "null"],
       description: "Earliest clean version to recommend. Omitted or null when unknown.",
     },
     cveIds: {
@@ -75,12 +75,12 @@ const CHECK_OUTPUT_SCHEMA = {
       description: "True only when all matching CVEs require authentication.",
     },
     typosquat: {
-      type: "object",
+      type: ["object", "null"],
       description:
         "Package name integrity signal when the name is a typosquat or AI-hallucinated package.",
       properties: {
         detected: { type: "boolean" },
-        resembles: { type: "string" },
+        resembles: { type: ["string", "null"] },
         confidence: { type: "number" },
         ecosystem: { type: "string" },
       },
@@ -90,7 +90,7 @@ const CHECK_OUTPUT_SCHEMA = {
       description: "True when a malicious PyPI or npm publish was detected.",
     },
     supplyChainDescription: {
-      type: "string",
+      type: ["string", "null"],
       description: "Human-readable supply-chain event description when present.",
     },
     message: {
@@ -186,17 +186,17 @@ const CVE_DETAIL_OUTPUT_SCHEMA = {
   properties: {
     found: { type: "boolean", description: "False when the CVE id is not in Attestd's database." },
     cveId: { type: "string" },
-    description: { type: "string" },
-    cvssScore: { type: "number" },
-    cvssVector: { type: "string" },
+    description: { type: ["string", "null"] },
+    cvssScore: { type: ["number", "null"] },
+    cvssVector: { type: ["string", "null"] },
     activelyExploited: { type: "boolean" },
     remoteExploitable: { type: "boolean" },
     authenticationRequired: { type: "boolean" },
     affectedProducts: { type: "array", items: { type: "string" } },
-    epssScore: { type: "number" },
-    epssPercentile: { type: "number" },
-    sourcePublishedAt: { type: "string" },
-    lastCheckedAt: { type: "string" },
+    epssScore: { type: ["number", "null"] },
+    epssPercentile: { type: ["number", "null"] },
+    sourcePublishedAt: { type: ["string", "null"] },
+    lastCheckedAt: { type: ["string", "null"] },
     error: { type: "string" },
   },
 };
@@ -256,20 +256,20 @@ const BATCH_OUTPUT_SCHEMA = {
             description: "True when Attestd has no CVE data for this product. Unknown risk, not safe.",
           },
           riskState: {
-            type: "string",
+            type: ["string", "null"],
             description: 'Risk band: "critical", "high", "elevated", "low", "none", or null when outside coverage.',
           },
           riskFactors: { type: "array", items: { type: "string" } },
-          maxEpss: { type: "number" },
+          maxEpss: { type: ["number", "null"] },
           activelyExploited: { type: "boolean" },
           remoteExploitable: { type: "boolean" },
           authenticationRequired: { type: "boolean" },
           patchAvailable: { type: "boolean" },
-          fixedVersion: { type: "string" },
+          fixedVersion: { type: ["string", "null"] },
           cveIds: { type: "array", items: { type: "string" } },
           confidence: { type: "number" },
           supplyChainCompromised: { type: "boolean" },
-          supplyChainDescription: { type: "string" },
+          supplyChainDescription: { type: ["string", "null"] },
         },
       },
     },
@@ -387,7 +387,15 @@ function getClient(
 export type ToolCallResult = {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
+  structuredContent?: Record<string, unknown>;
 };
+
+function successJson(payload: object): ToolCallResult {
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload as Record<string, unknown>,
+  };
+}
 
 /**
  * Dispatches a single MCP tool call. Exported for unit tests.
@@ -404,23 +412,12 @@ export async function handleToolCall(
     if (attestd) {
       try {
         const result = await attestd.products();
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  source: "live",
-                  total: result.total,
-                  cveProducts: result.cveProducts,
-                  supplyChainPackages: result.supplyChainPackages,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return successJson({
+          source: "live",
+          total: result.total,
+          cveProducts: result.cveProducts,
+          supplyChainPackages: result.supplyChainPackages,
+        });
       } catch (err) {
         if (err instanceof AttestdAuthError) {
           return {
@@ -472,22 +469,11 @@ export async function handleToolCall(
       }
     }
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              source: "static",
-              count: COVERED_PRODUCT_COUNT,
-              products: COVERED_PRODUCTS,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return successJson({
+      source: "static",
+      count: COVERED_PRODUCT_COUNT,
+      products: COVERED_PRODUCTS,
+    });
   }
 
   if (toolName === "check_package_vulnerability") {
@@ -533,52 +519,30 @@ export async function handleToolCall(
 
       try {
         const result = await attestd.check(product, version);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(
-                {
-                  outsideCoverage: false,
-                  riskState: result.riskState,
-                  riskFactors: result.riskFactors,
-                  maxEpss: result.maxEpss,
-                  activelyExploited: result.activelyExploited,
-                  remoteExploitable: result.remoteExploitable,
-                  authenticationRequired: result.authenticationRequired,
-                  patchAvailable: result.patchAvailable,
-                  fixedVersion: result.fixedVersion,
-                  cveIds: result.cveIds,
-                  confidence: result.confidence,
-                  typosquat: result.typosquat,
-                  supplyChainCompromised: result.supplyChain?.compromised ?? false,
-                  supplyChainDescription: result.supplyChain?.description ?? null,
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        };
+        return successJson({
+          outsideCoverage: false,
+          riskState: result.riskState,
+          riskFactors: result.riskFactors,
+          maxEpss: result.maxEpss,
+          activelyExploited: result.activelyExploited,
+          remoteExploitable: result.remoteExploitable,
+          authenticationRequired: result.authenticationRequired,
+          patchAvailable: result.patchAvailable,
+          fixedVersion: result.fixedVersion,
+          cveIds: result.cveIds,
+          confidence: result.confidence,
+          typosquat: result.typosquat,
+          supplyChainCompromised: result.supplyChain?.compromised ?? false,
+          supplyChainDescription: result.supplyChain?.description ?? null,
+        });
       } catch (err) {
         if (err instanceof AttestdUnsupportedProductError) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    outsideCoverage: true,
-                    riskState: null,
-                    typosquat: err.typosquat,
-                    message: `No Attestd coverage for '${product}'. Treat as unknown risk, not safe.`,
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
-          };
+          return successJson({
+            outsideCoverage: true,
+            riskState: null,
+            typosquat: err.typosquat,
+            message: `No Attestd coverage for '${product}'. Treat as unknown risk, not safe.`,
+          });
         }
 
         const isUnsupported =
@@ -771,14 +735,7 @@ export async function handleToolCall(
             supplyChainDescription: result.supplyChain?.description ?? null,
           };
         });
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({ count: output.length, results: output }, null, 2),
-            },
-          ],
-        };
+        return successJson({ count: output.length, results: output });
       } catch (err) {
         if (err instanceof AttestdAuthError) {
           return {
@@ -855,42 +812,24 @@ export async function handleToolCall(
 
     try {
       const detail = await attestd.cve(cveId);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                found: true,
-                cveId: detail.cveId,
-                description: detail.description,
-                cvssScore: detail.cvssScore,
-                cvssVector: detail.cvssVector,
-                activelyExploited: detail.activelyExploited,
-                remoteExploitable: detail.remoteExploitable,
-                authenticationRequired: detail.authenticationRequired,
-                affectedProducts: detail.affectedProducts,
-                epssScore: detail.epssScore,
-                epssPercentile: detail.epssPercentile,
-                sourcePublishedAt: detail.sourcePublishedAt?.toISOString() ?? null,
-                lastCheckedAt: detail.lastCheckedAt?.toISOString() ?? null,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return successJson({
+        found: true,
+        cveId: detail.cveId,
+        description: detail.description,
+        cvssScore: detail.cvssScore,
+        cvssVector: detail.cvssVector,
+        activelyExploited: detail.activelyExploited,
+        remoteExploitable: detail.remoteExploitable,
+        authenticationRequired: detail.authenticationRequired,
+        affectedProducts: detail.affectedProducts,
+        epssScore: detail.epssScore,
+        epssPercentile: detail.epssPercentile,
+        sourcePublishedAt: detail.sourcePublishedAt?.toISOString() ?? null,
+        lastCheckedAt: detail.lastCheckedAt?.toISOString() ?? null,
+      });
     } catch (err) {
       if (err instanceof AttestdAPIError && err.statusCode === 404) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({ found: false, cveId }, null, 2),
-            },
-          ],
-        };
+        return successJson({ found: false, cveId });
       }
       if (err instanceof AttestdAuthError) {
         return {
@@ -965,27 +904,16 @@ export async function handleToolCall(
 
     try {
       const usage = await attestd.usage();
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                tier: usage.tier,
-                keyCallsThisMonth: usage.keyCallsThisMonth,
-                accountCallsThisMonth: usage.accountCallsThisMonth,
-                includedCalls: usage.includedCalls,
-                billingPeriodStart: usage.billingPeriodStart.toISOString(),
-                billingPeriodEnd: usage.billingPeriodEnd.toISOString(),
-                overageCalls: usage.overageCalls,
-                estimatedOverageUsd: usage.estimatedOverageUsd,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
-      };
+      return successJson({
+        tier: usage.tier,
+        keyCallsThisMonth: usage.keyCallsThisMonth,
+        accountCallsThisMonth: usage.accountCallsThisMonth,
+        includedCalls: usage.includedCalls,
+        billingPeriodStart: usage.billingPeriodStart.toISOString(),
+        billingPeriodEnd: usage.billingPeriodEnd.toISOString(),
+        overageCalls: usage.overageCalls,
+        estimatedOverageUsd: usage.estimatedOverageUsd,
+      });
     } catch (err) {
       if (err instanceof AttestdAuthError) {
         return {
